@@ -5,7 +5,7 @@ import { toDate } from '@/lib/time';
 import { getSettings } from '@/lib/settings';
 import { buildDailyPlan, type PlanRow } from '@/lib/plan';
 import { displayName, monogram } from '@/lib/user';
-import { priorityBorderClass } from '@/lib/ui';
+import { priorityBorderClass, priorityBgClass } from '@/lib/ui';
 import { IconCheck } from './icons';
 
 interface Props {
@@ -85,8 +85,10 @@ function TaskRow({
                 >
                   {task.title}
                 </span>
-                {!done && task.priority === 1 && (
-                  <span className="mt-[5px] h-[7px] w-[7px] flex-shrink-0 rounded-full bg-accent-priority" />
+                {!done && task.priority <= 2 && (
+                  <span
+                    className={`mt-[5px] h-[7px] w-[7px] flex-shrink-0 rounded-full ${priorityBgClass(task.priority)}`}
+                  />
                 )}
               </div>
               <div className="mt-0.5 text-[11px]">

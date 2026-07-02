@@ -3,7 +3,7 @@ import type { TaskDraft } from '@/types';
 import { emptyDraft } from '@/lib/parseDrafts';
 import { splitIso, joinIso, formatDue, formatTime } from '@/lib/time';
 import * as api from '@/lib/tasks';
-import { priorityBorderClass } from '@/lib/ui';
+import { priorityBorderClass, priorityTextClass, prioritySegmentActiveClass } from '@/lib/ui';
 import { IconBack } from './icons';
 
 const PRIORITIES = [1, 2, 3, 4] as const;
@@ -17,16 +17,13 @@ interface Props {
   onSaved: () => void;
 }
 
-/** Priority badge — P1 is tan-outlined, P2–P4 neutral-outlined. */
+/** Priority badge — hued per level (P1 red · P2 tan · P3 slate · P4 neutral). */
 function PriorityBadge({ priority }: { priority: number }) {
-  const p1 = priority === 1;
   return (
     <span
-      className={`flex-shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-medium ${
-        p1
-          ? 'border-[rgba(210,164,110,0.4)] text-accent-priority'
-          : 'border-[rgba(245,239,229,0.18)] text-ink-muted'
-      }`}
+      className={`flex-shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-medium ${priorityBorderClass(
+        priority,
+      )} ${priorityTextClass(priority)}`}
     >
       P{priority}
     </span>
@@ -172,7 +169,7 @@ export function ConfirmSheet({ initial, rawInput, onClose, onSaved }: Props) {
                     aria-pressed={d.priority === p}
                     className={`flex-1 rounded-full py-1 text-[11px] font-medium transition-colors duration-[120ms] ${
                       d.priority === p
-                        ? 'bg-accent-priority font-bold text-btn-primary-ink'
+                        ? `font-bold ${prioritySegmentActiveClass(p)}`
                         : 'bg-chip text-ink-muted'
                     }`}
                   >

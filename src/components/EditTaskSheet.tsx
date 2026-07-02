@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { format } from 'date-fns';
 import type { Task } from '@/types';
 import { splitIso, joinIso, toDate } from '@/lib/time';
+import { prioritySegmentActiveClass } from '@/lib/ui';
 import { IconBack, IconTrash, IconCheck, IconCalendar } from './icons';
 
 const PRIORITIES = [1, 2, 3, 4] as const;
@@ -198,7 +199,7 @@ export function EditTaskSheet({
               aria-label={`Priority ${p}`}
               aria-pressed={priority === p}
               className={`flex-1 rounded-full py-1.5 text-[12px] transition-colors duration-[120ms] ${
-                priority === p ? 'bg-accent-priority font-bold text-btn-primary-ink' : 'text-ink-muted'
+                priority === p ? `font-bold ${prioritySegmentActiveClass(p)}` : 'text-ink-muted'
               }`}
             >
               P{p}

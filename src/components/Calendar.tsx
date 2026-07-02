@@ -14,6 +14,7 @@ import {
 } from 'date-fns';
 import type { Task } from '@/types';
 import { formatTime, toDate } from '@/lib/time';
+import { priorityBgClass } from '@/lib/ui';
 import { IconBack, IconForward } from './icons';
 
 interface Props {
@@ -153,7 +154,7 @@ export function Calendar({ tasks }: Props) {
         ) : (
           selectedTasks.map((t) => (
             <div key={t.id} className="flex items-center gap-3">
-              <div className="h-9 w-1 flex-shrink-0 rounded-full bg-accent-priority" />
+              <div className={`h-9 w-1 flex-shrink-0 rounded-full ${priorityBgClass(t.priority)}`} />
               <div className="min-w-0 flex-1">
                 <p
                   className={`break-words text-[13px] font-medium ${

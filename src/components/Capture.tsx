@@ -13,7 +13,7 @@ type SpeechRecognitionLike = {
   start: () => void;
   stop: () => void;
   onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
-  onerror: (() => void) | null;
+  onerror: ((e?: { error?: string }) => void) | null;
   onend: (() => void) | null;
 };
 
@@ -33,12 +33,19 @@ interface Props {
 
 const EXAMPLES = ['Try: "pay rent on the 1st"', '"gym 3x this week"'];
 
+const MIC_HINT =
+  "Voice input isn't working in this browser — tap the mic on your keyboard to dictate into the box instead.";
+
 export function Capture({ onParsed }: Props) {
   const [text, setText] = useState('');
   const [parsing, setParsing] = useState(false);
   const [listening, setListening] = useState(false);
+  const [micError, setMicError] = useState<string | null>(null);
 
   const recRef = useRef<SpeechRecognitionLike | null>(null);
+  // Text present when the mic starts — dictation appends after it instead of
+  // wiping what was already typed.
+  const baseTextRef = useRef('');
   const speechSupported = getRecognitionCtor() !== null;
 
   useEffect(() => {
@@ -54,6 +61,7 @@ export function Capture({ onParsed }: Props) {
       recRef.current?.stop();
       return;
     }
+    setMicError(null);
     const rec = new Ctor();
     rec.lang = navigator.language || 'en-US';
     rec.interimResults = true;
@@ -61,13 +69,28 @@ export function Capture({ onParsed }: Props) {
     rec.onresult = (e) => {
       let out = '';
       for (let i = 0; i < e.results.length; i++) out += e.results[i][0].transcript;
-      setText(out);
+      const base = baseTextRef.current;
+      setText(base ? `${base.replace(/\s+$/, '')} ${out}` : out);
     };
-    rec.onerror = () => setListening(false);
+    // Some browsers (notably iOS Safari, incl. installed PWAs) expose the API
+    // but fail at runtime — surface that instead of a dead-looking button.
+    rec.onerror = (e) => {
+      setListening(false);
+      setMicError(
+        e?.error === 'not-allowed' || e?.error === 'service-not-allowed'
+          ? 'Microphone access was blocked. Allow the mic in your browser settings, or use the keyboard mic to dictate.'
+          : MIC_HINT,
+      );
+    };
     rec.onend = () => setListening(false);
     recRef.current = rec;
-    rec.start();
-    setListening(true);
+    baseTextRef.current = text;
+    try {
+      rec.start();
+      setListening(true);
+    } catch {
+      setMicError(MIC_HINT);
+    }
   }
 
   async function onParse() {
@@ -135,6 +158,11 @@ export function Capture({ onParsed }: Props) {
         </button>
       </div>
 
+      {micError && (
+        <p className="text-[12px] text-accent-priority" role="alert">
+          {micError}
+        </p>
+      )}
       {!speechSupported && (
         <p className="text-[12px] text-ink-fainter">
           Voice input isn't available in this browser. On iPhone, tap the mic on your keyboard to
