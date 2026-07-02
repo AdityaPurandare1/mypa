@@ -11,7 +11,9 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { MODEL_ID, MAX_TOKENS, ANTHROPIC_VERSION } from './config.ts';
 
-const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY') ?? '';
+// Strip ALL whitespace (incl. newlines a dashboard paste can introduce) — a
+// key with an embedded "\n" reaches Anthropic as an invalid x-api-key header.
+const ANTHROPIC_API_KEY = (Deno.env.get('ANTHROPIC_API_KEY') ?? '').replace(/\s+/g, '');
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
 
