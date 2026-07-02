@@ -33,7 +33,7 @@ function timeSubline(dueMs: number | null): string {
 
 function TimeLabel({ dueMs }: { dueMs: number | null }) {
   return (
-    <div className="pt-[9px] text-[11px] text-ink-fainter">
+    <div className="pt-[9px] text-[11px] font-medium text-ink-secondary">
       {dueMs === null ? '' : format(new Date(dueMs), 'h:mm')}
     </div>
   );
@@ -57,8 +57,12 @@ function TaskRow({
     <div className="grid grid-cols-[44px_1fr] gap-2">
       <TimeLabel dueMs={dueMs} />
       <div className="flex gap-2">
-        {/* left rail */}
-        <div className="w-[2px] flex-shrink-0 rounded-full bg-rail" />
+        {/* left rail — takes the row's priority hue; sage once done */}
+        <div
+          className={`w-[3px] flex-shrink-0 rounded-full ${
+            done ? 'bg-accent-success' : priorityBgClass(task.priority)
+          }`}
+        />
         <div
           className={`min-w-0 flex-1 rounded-[9px] border bg-surface p-3 transition-colors duration-[120ms] ${priorityBorderClass(
             task.priority,
@@ -93,11 +97,11 @@ function TaskRow({
               </div>
               <div className="mt-0.5 text-[11px]">
                 {carried ? (
-                  <span data-testid={`carried-${task.id}`} className="text-accent-priority">
+                  <span data-testid={`carried-${task.id}`} className="text-[#FFB74D]">
                     Carried from yesterday · P{task.priority}
                   </span>
                 ) : (
-                  <span className="text-ink-fainter">{timeSubline(dueMs)}</span>
+                  <span className="text-ink-muted">{timeSubline(dueMs)}</span>
                 )}
               </div>
             </button>
@@ -172,13 +176,13 @@ export function Agenda({ tasks, ...actions }: Props) {
             {capacity.fit} {capacity.fit === 1 ? 'task fits' : 'tasks fit'} your day
           </span>
           {capacity.carried > 0 && (
-            <span className="text-[12px] text-accent-priority">{capacity.carried} carried over</span>
+            <span className="text-[12px] text-[#FFB74D]">{capacity.carried} carried over</span>
           )}
         </div>
         <div className="mt-2.5 flex h-1.5 gap-1 overflow-hidden rounded-full bg-rail">
-          {donePct > 0 && <div className="h-full rounded-full bg-accent-success" style={{ width: `${donePct}%` }} />}
+          {donePct > 0 && <div className="h-full rounded-full bg-[#42D392]" style={{ width: `${donePct}%` }} />}
           {plannedPct > 0 && (
-            <div className="h-full rounded-full bg-accent-event" style={{ width: `${plannedPct}%` }} />
+            <div className="h-full rounded-full bg-[#4DA3FF]" style={{ width: `${plannedPct}%` }} />
           )}
         </div>
         <div className="mt-2 text-[11px] text-ink-fainter">
