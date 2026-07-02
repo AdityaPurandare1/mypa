@@ -15,11 +15,24 @@ interface Props {
   /** Persist edits AND complete in a single parent-owned flow; the parent
    *  closes the sheet only after both settle. */
   onSaveAndComplete: (id: string, patch: Patch) => Promise<void>;
+  /** Persist edits AND reopen (undo a done) in a single parent-owned flow. */
+  onSaveAndReopen: (id: string, patch: Patch) => Promise<void>;
   onComplete: (id: string) => Promise<void>;
+  /** Undo an accidental complete — back to open. Parent closes the sheet. */
+  onReopen: (id: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
 }
 
-export function EditTaskSheet({ task, onClose, onSave, onSaveAndComplete, onComplete, onDelete }: Props) {
+export function EditTaskSheet({
+  task,
+  onClose,
+  onSave,
+  onSaveAndComplete,
+  onSaveAndReopen,
+  onComplete,
+  onReopen,
+  onDelete,
+}: Props) {
   const initial = splitIso(task.due_at);
   const [title, setTitle] = useState(task.title);
   const [notes, setNotes] = useState(task.notes ?? '');
@@ -64,6 +77,18 @@ export function EditTaskSheet({ task, onClose, onSave, onSaveAndComplete, onComp
     }
   }
 
+  // Symmetric undo: persist edits + reopen as one parent-owned flow.
+  async function markUndone() {
+    setBusy(true);
+    setError(null);
+    try {
+      await onSaveAndReopen(task.id, patch());
+    } catch (e) {
+      setBusy(false);
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
   // Persist edits, then close (back chevron). A failed save keeps the sheet open.
   async function saveAndClose() {
     setBusy(true);
@@ -77,10 +102,12 @@ export function EditTaskSheet({ task, onClose, onSave, onSaveAndComplete, onComp
   }
 
   // Circle button / trash: surface failures inline instead of an unhandled
-  // rejection (mutations rethrow after rollback).
-  function completeOnly() {
+  // rejection (mutations rethrow after rollback). The circle toggles: a done
+  // task goes back to open (undo for an accidental complete).
+  function toggleDone() {
     setError(null);
-    void onComplete(task.id).catch((e) => setError(e instanceof Error ? e.message : String(e)));
+    const action = task.status === 'done' ? onReopen : onComplete;
+    void action(task.id).catch((e) => setError(e instanceof Error ? e.message : String(e)));
   }
   function deleteTask() {
     setError(null);
@@ -107,8 +134,8 @@ export function EditTaskSheet({ task, onClose, onSave, onSaveAndComplete, onComp
         {/* Title row */}
         <div className="mt-5 flex items-start gap-3">
           <button
-            onClick={completeOnly}
-            aria-label={done ? 'Completed' : 'Complete task'}
+            onClick={toggleDone}
+            aria-label={done ? 'Mark not done' : 'Complete task'}
             className={`mt-1 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full border-2 transition-colors duration-[120ms] ${
               done ? 'border-accent-success bg-accent-success text-app' : 'border-ink-empty'
             }`}
@@ -200,11 +227,15 @@ export function EditTaskSheet({ task, onClose, onSave, onSaveAndComplete, onComp
             <IconTrash size={20} />
           </button>
           <button
-            onClick={() => void markDone()}
+            onClick={() => void (done ? markUndone() : markDone())}
             disabled={busy}
-            className="flex-1 rounded-full bg-accent-success py-3.5 text-[15px] font-bold text-btn-success-ink transition disabled:opacity-50"
+            className={`flex-1 rounded-full py-3.5 text-[15px] font-bold transition disabled:opacity-50 ${
+              done
+                ? 'border border-[rgba(245,239,229,0.18)] bg-surface text-ink-card'
+                : 'bg-accent-success text-btn-success-ink'
+            }`}
           >
-            {busy ? 'Saving…' : 'Mark done'}
+            {busy ? 'Saving…' : done ? 'Mark undone' : 'Mark done'}
           </button>
         </div>
       </div>

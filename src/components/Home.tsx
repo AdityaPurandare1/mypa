@@ -23,7 +23,7 @@ const NEUTRAL_TABS: { id: Exclude<Tab, 'capture'>; label: string; Icon: typeof I
 export function Home() {
   const [tab, setTab] = useState<Tab>('today');
   const [editing, setEditing] = useState<Task | null>(null);
-  const { tasks, complete, snooze, remove, edit, refetch } = useTasks();
+  const { tasks, complete, reopen, snooze, remove, edit, refetch } = useTasks();
 
   useDueReminders(tasks);
 
@@ -37,6 +37,7 @@ export function Home() {
   // sheet can react); for one-tap rows the rollback IS the feedback — swallow
   // the rejection instead of leaving it unhandled.
   const quietComplete = useCallback((id: string) => void complete(id).catch(() => {}), [complete]);
+  const quietReopen = useCallback((id: string) => void reopen(id).catch(() => {}), [reopen]);
   const quietSnooze = useCallback(
     (id: string, until: string) => void snooze(id, until).catch(() => {}),
     [snooze],
@@ -54,6 +55,7 @@ export function Home() {
           <Agenda
             tasks={tasks}
             onComplete={quietComplete}
+            onReopen={quietReopen}
             onSnooze={quietSnooze}
             onDelete={quietRemove}
             onEdit={setEditing}
@@ -100,6 +102,10 @@ export function Home() {
             await complete(id);
             setEditing(null);
           }}
+          onReopen={async (id) => {
+            await reopen(id);
+            setEditing(null);
+          }}
           onDelete={async (id) => {
             await remove(id);
             setEditing(null);
@@ -114,6 +120,12 @@ export function Home() {
             // error (rethrown from useTasks after rollback).
             await edit(id, patch);
             await complete(id);
+            setEditing(null);
+          }}
+          onSaveAndReopen={async (id, patch) => {
+            // Symmetric undo: edit then reopen, close only after both settle.
+            await edit(id, patch);
+            await reopen(id);
             setEditing(null);
           }}
         />

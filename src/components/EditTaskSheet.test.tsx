@@ -25,7 +25,9 @@ function setup(over: Partial<Task> = {}, overrides: Partial<Record<string, Retur
   const onClose = vi.fn();
   const onSave = overrides.onSave ?? vi.fn().mockResolvedValue(undefined);
   const onSaveAndComplete = overrides.onSaveAndComplete ?? vi.fn().mockResolvedValue(undefined);
+  const onSaveAndReopen = overrides.onSaveAndReopen ?? vi.fn().mockResolvedValue(undefined);
   const onComplete = vi.fn().mockResolvedValue(undefined);
+  const onReopen = vi.fn().mockResolvedValue(undefined);
   const onDelete = vi.fn().mockResolvedValue(undefined);
   render(
     <EditTaskSheet
@@ -33,11 +35,13 @@ function setup(over: Partial<Task> = {}, overrides: Partial<Record<string, Retur
       onClose={onClose}
       onSave={onSave}
       onSaveAndComplete={onSaveAndComplete}
+      onSaveAndReopen={onSaveAndReopen}
       onComplete={onComplete}
+      onReopen={onReopen}
       onDelete={onDelete}
     />,
   );
-  return { onClose, onSave, onSaveAndComplete, onComplete, onDelete };
+  return { onClose, onSave, onSaveAndComplete, onSaveAndReopen, onComplete, onReopen, onDelete };
 }
 
 describe('EditTaskSheet', () => {
@@ -112,8 +116,21 @@ describe('EditTaskSheet', () => {
     expect(onSave.mock.calls[0][0].notes).toBeNull();
   });
 
-  it('renders a checked complete control for an already-done task', () => {
-    setup({ status: 'done', completed_at: '2026-07-01T13:00:00Z' });
-    expect(screen.getByLabelText('Completed')).toBeInTheDocument();
+  it('a done task offers undo: circle toggles reopen, footer saves + reopens', async () => {
+    const { onReopen, onSaveAndReopen, onComplete, onSaveAndComplete } = setup({
+      status: 'done',
+      completed_at: '2026-07-01T13:00:00Z',
+    });
+
+    // Circle now reads as the undo affordance and drives reopen, not complete.
+    fireEvent.click(screen.getByLabelText('Mark not done'));
+    await waitFor(() => expect(onReopen).toHaveBeenCalledWith('t1'));
+    expect(onComplete).not.toHaveBeenCalled();
+
+    // Footer primary is "Mark undone" and persists edits + reopens as one flow.
+    fireEvent.click(screen.getByRole('button', { name: /Mark undone/ }));
+    await waitFor(() => expect(onSaveAndReopen).toHaveBeenCalledTimes(1));
+    expect(onSaveAndReopen.mock.calls[0][0]).toBe('t1');
+    expect(onSaveAndComplete).not.toHaveBeenCalled();
   });
 });

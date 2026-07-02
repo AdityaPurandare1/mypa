@@ -8,6 +8,7 @@ interface UseTasks {
   error: string | null;
   refetch: () => Promise<void>;
   complete: (id: string) => Promise<void>;
+  reopen: (id: string) => Promise<void>;
   snooze: (id: string, until: string) => Promise<void>;
   remove: (id: string) => Promise<void>;
   edit: (
@@ -104,6 +105,19 @@ export function useTasks(): UseTasks {
     [mutate],
   );
 
+  /** Undo an accidental complete — back to open, completed_at cleared. */
+  const reopen = useCallback(
+    (id: string) =>
+      mutate(
+        (prev) =>
+          prev.map((t) =>
+            t.id === id ? { ...t, status: 'open' as TaskStatus, completed_at: null } : t,
+          ),
+        () => api.setStatus(id, 'open'),
+      ),
+    [mutate],
+  );
+
   const snooze = useCallback(
     (id: string, until: string) =>
       mutate(
@@ -132,5 +146,5 @@ export function useTasks(): UseTasks {
     [mutate],
   );
 
-  return { tasks, loading, error, refetch, complete, snooze, remove, edit };
+  return { tasks, loading, error, refetch, complete, reopen, snooze, remove, edit };
 }

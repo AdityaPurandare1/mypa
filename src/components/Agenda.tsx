@@ -11,6 +11,7 @@ import { IconCheck } from './icons';
 interface Props {
   tasks: Task[];
   onComplete: (id: string) => void;
+  onReopen: (id: string) => void;
   onSnooze: (id: string, until: string) => void;
   onDelete: (id: string) => void;
   onEdit: (task: Task) => void;
@@ -42,6 +43,7 @@ function TaskRow({
   row,
   now,
   onComplete,
+  onReopen,
   onSnooze,
   onDelete,
   onEdit,
@@ -65,8 +67,8 @@ function TaskRow({
         >
           <div className="flex min-w-0 items-start gap-2.5">
             <button
-              onClick={() => onComplete(task.id)}
-              aria-label={done ? 'Completed' : 'Complete task'}
+              onClick={() => (done ? onReopen(task.id) : onComplete(task.id))}
+              aria-label={done ? 'Mark not done' : 'Complete task'}
               className={`mt-[1px] flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors duration-[120ms] ${
                 done ? 'border-accent-success bg-accent-success text-app' : 'border-ink-empty'
               }`}

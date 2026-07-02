@@ -42,7 +42,7 @@ beforeEach(() => {
 describe('Agenda (Today)', () => {
   it('flags an overdue open task as carried when carry-forward is on', () => {
     const t = task({ id: 'od', title: 'Overdue thing', due_at: '2000-01-01T00:00:00Z', status: 'open' });
-    render(<Agenda tasks={[t]} onComplete={noop} onSnooze={noop} onDelete={noop} onEdit={noop} />);
+    render(<Agenda tasks={[t]} onComplete={noop} onReopen={noop} onSnooze={noop} onDelete={noop} onEdit={noop} />);
     const flag = screen.getByTestId('carried-od');
     expect(flag).toBeInTheDocument();
     expect(flag).toHaveTextContent(/Carried/);
@@ -50,7 +50,7 @@ describe('Agenda (Today)', () => {
 
   it('shows a no-date open task in today without a carried flag', () => {
     const t = task({ id: 'nd', title: 'Someday thing', due_at: null });
-    render(<Agenda tasks={[t]} onComplete={noop} onSnooze={noop} onDelete={noop} onEdit={noop} />);
+    render(<Agenda tasks={[t]} onComplete={noop} onReopen={noop} onSnooze={noop} onDelete={noop} onEdit={noop} />);
     expect(screen.getByText('Someday thing')).toBeInTheDocument();
     expect(screen.queryByTestId('carried-nd')).not.toBeInTheDocument();
   });
@@ -58,13 +58,25 @@ describe('Agenda (Today)', () => {
   it('calls onComplete when the checkbox is tapped', () => {
     const onComplete = vi.fn();
     const t = task({ id: 'x' });
-    render(<Agenda tasks={[t]} onComplete={onComplete} onSnooze={noop} onDelete={noop} onEdit={noop} />);
+    render(<Agenda tasks={[t]} onComplete={onComplete} onReopen={noop} onSnooze={noop} onDelete={noop} onEdit={noop} />);
     fireEvent.click(screen.getByLabelText('Complete task'));
     expect(onComplete).toHaveBeenCalledWith('x');
   });
 
+  it('a done row toggles back: checkbox calls onReopen, not onComplete', () => {
+    const onComplete = vi.fn();
+    const onReopen = vi.fn();
+    const t = task({ id: 'x', status: 'done', completed_at: new Date().toISOString() });
+    render(
+      <Agenda tasks={[t]} onComplete={onComplete} onReopen={onReopen} onSnooze={noop} onDelete={noop} onEdit={noop} />,
+    );
+    fireEvent.click(screen.getByLabelText('Mark not done'));
+    expect(onReopen).toHaveBeenCalledWith('x');
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+
   it('greets the signed-in user by name', () => {
-    render(<Agenda tasks={[]} onComplete={noop} onSnooze={noop} onDelete={noop} onEdit={noop} />);
+    render(<Agenda tasks={[]} onComplete={noop} onReopen={noop} onSnooze={noop} onDelete={noop} onEdit={noop} />);
     expect(screen.getByText(/Michael/)).toBeInTheDocument();
   });
 
@@ -72,7 +84,7 @@ describe('Agenda (Today)', () => {
     const due = new Date();
     due.setHours(14, 0, 0, 0); // 2:00 PM today, after the default 08:00 dayStart
     const t = task({ id: 'timed', title: 'Timed thing', due_at: due.toISOString() });
-    render(<Agenda tasks={[t]} onComplete={noop} onSnooze={noop} onDelete={noop} onEdit={noop} />);
+    render(<Agenda tasks={[t]} onComplete={noop} onReopen={noop} onSnooze={noop} onDelete={noop} onEdit={noop} />);
     expect(screen.getByText('2:00 PM · Focus block')).toBeInTheDocument();
     expect(screen.queryByText(/–/)).not.toBeInTheDocument();
   });
