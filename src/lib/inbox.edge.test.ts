@@ -6,7 +6,7 @@ import type { TaskDraft } from '@/types';
 // storage absent, round-trip fidelity.
 
 const KEY = 'mypa.inbox.v1';
-const draft = (title: string): TaskDraft => ({ title, notes: null, due_at: null, priority: 3 });
+const draft = (title: string): TaskDraft => ({ title, notes: null, due_at: null, priority: 3, steps: [] });
 
 function mockStorage(): Storage {
   const map = new Map<string, string>();
@@ -80,7 +80,7 @@ describe('inbox stash — partial / malformed objects', () => {
   });
 
   it('round-trips full drafts with dates/notes/priority', () => {
-    const d: TaskDraft = { title: 'Pay rent', notes: 'via app', due_at: '2026-07-01T17:00:00.000Z', priority: 1 };
+    const d: TaskDraft = { title: 'Pay rent', notes: 'via app', due_at: '2026-07-01T17:00:00.000Z', priority: 1, steps: [] };
     setInbox({ drafts: [d], rawInput: 'pay rent at 5' });
     const got = getInbox();
     expect(got?.drafts[0]).toEqual(d);

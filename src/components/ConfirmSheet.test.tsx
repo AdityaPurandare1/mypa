@@ -9,7 +9,13 @@ vi.mock('@/lib/tasks', () => ({
 import { ConfirmSheet } from './ConfirmSheet';
 import type { TaskDraft } from '@/types';
 
-const draft = (title: string): TaskDraft => ({ title, notes: null, due_at: null, priority: 3 });
+const draft = (title: string, steps: string[] = []): TaskDraft => ({
+  title,
+  notes: null,
+  due_at: null,
+  priority: 3,
+  steps,
+});
 
 beforeEach(() => {
   createTasksSpy.mockReset();
@@ -76,6 +82,28 @@ describe('ConfirmSheet', () => {
     expect(confirm).not.toHaveBeenCalled();
     expect(onClose).toHaveBeenCalledTimes(1);
     confirm.mockRestore();
+  });
+
+  it('renders parsed steps and can add a step', () => {
+    render(
+      <ConfirmSheet initial={[draft('A', ['book venue'])]} rawInput="raw" onClose={() => {}} onSaved={() => {}} />,
+    );
+    expect(screen.getByText('book venue')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Add step to task 1'), { target: { value: 'send invites' } });
+    fireEvent.keyDown(screen.getByLabelText('Add step to task 1'), { key: 'Enter' });
+    expect(screen.getByText('send invites')).toBeInTheDocument();
+  });
+
+  it('removing a parsed step then saving passes the remaining steps', async () => {
+    const onSaved = vi.fn();
+    render(
+      <ConfirmSheet initial={[draft('A', ['keep', 'drop'])]} rawInput="raw" onClose={() => {}} onSaved={onSaved} />,
+    );
+    fireEvent.click(screen.getByLabelText('Remove step 2 of task 1'));
+    fireEvent.click(screen.getByRole('button', { name: /Save all/ }));
+    await waitFor(() => expect(createTasksSpy).toHaveBeenCalledTimes(1));
+    const rows = createTasksSpy.mock.calls[0][0] as Array<{ steps: string[] }>;
+    expect(rows[0].steps).toEqual(['keep']);
   });
 
   it('blocks save when every title is empty', async () => {

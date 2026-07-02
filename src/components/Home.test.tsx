@@ -20,6 +20,7 @@ const oneTask: Task = {
   priority: 3,
   status: 'open',
   source: 'voice',
+  steps: [],
   created_at: '2026-07-01T00:00:00Z',
   updated_at: '2026-07-01T00:00:00Z',
   completed_at: null,
@@ -35,6 +36,7 @@ vi.mock('@/hooks/useTasks', () => ({
     snooze: snoozeSpy,
     remove: removeSpy,
     edit: editSpy,
+    setSteps: vi.fn().mockResolvedValue(undefined),
   }),
 }));
 

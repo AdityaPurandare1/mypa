@@ -61,6 +61,9 @@ export function ConfirmSheet({ initial, rawInput, onClose, onSaved }: Props) {
     return () => document.removeEventListener('keydown', onKeyDown);
   }, []);
 
+  // Per-card draft text for the "add step" inputs, keyed by draft index.
+  const [stepInputs, setStepInputs] = useState<Record<number, string>>({});
+
   function patch(i: number, p: Partial<TaskDraft>) {
     setDrafts((prev) => prev.map((d, idx) => (idx === i ? { ...d, ...p } : d)));
   }
@@ -69,6 +72,17 @@ export function ConfirmSheet({ initial, rawInput, onClose, onSaved }: Props) {
   }
   function addRow() {
     setDrafts((prev) => [...prev, emptyDraft()]);
+  }
+  function addStep(i: number) {
+    const title = (stepInputs[i] ?? '').trim();
+    if (!title) return;
+    setDrafts((prev) => prev.map((d, idx) => (idx === i ? { ...d, steps: [...d.steps, title] } : d)));
+    setStepInputs((prev) => ({ ...prev, [i]: '' }));
+  }
+  function removeStep(i: number, s: number) {
+    setDrafts((prev) =>
+      prev.map((d, idx) => (idx === i ? { ...d, steps: d.steps.filter((_, si) => si !== s) } : d)),
+    );
   }
 
   async function saveAll() {
@@ -185,6 +199,39 @@ export function ConfirmSheet({ initial, rawInput, onClose, onSaved }: Props) {
                 onChange={(e) => patch(i, { notes: e.target.value || null })}
                 rows={2}
                 className="mt-2.5 w-full resize-none rounded-[10px] border border-hairline bg-app px-3 py-2 text-[13px] text-ink-secondary placeholder-ink-fainter outline-none"
+              />
+
+              {/* Parsed / edited steps — a compact editable list. */}
+              {d.steps.length > 0 && (
+                <div className="mt-2.5 space-y-1.5">
+                  {d.steps.map((s, si) => (
+                    <div key={si} className="flex items-start gap-2">
+                      <span className="mt-[7px] h-[3px] w-[3px] flex-shrink-0 rounded-full bg-ink-empty" />
+                      <span className="min-w-0 flex-1 break-words text-[12px] text-ink-secondary">{s}</span>
+                      <button
+                        onClick={() => removeStep(i, si)}
+                        aria-label={`Remove step ${si + 1} of task ${i + 1}`}
+                        className="flex-shrink-0 text-[13px] text-ink-fainter transition-colors duration-[120ms] hover:text-accent-destructive"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <input
+                aria-label={`Add step to task ${i + 1}`}
+                placeholder="Add step"
+                value={stepInputs[i] ?? ''}
+                onChange={(e) => setStepInputs((prev) => ({ ...prev, [i]: e.target.value }))}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addStep(i);
+                  }
+                }}
+                className="mt-2 w-full rounded-[10px] border border-hairline bg-app px-3 py-1.5 text-[12px] text-ink-secondary placeholder-ink-fainter outline-none"
               />
             </div>
           );

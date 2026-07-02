@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import { addDays, addWeeks, format } from 'date-fns';
 import { useAuth } from '@/lib/auth';
-import type { Task } from '@/types';
+import type { Task, TaskStep } from '@/types';
 import { toDate } from '@/lib/time';
 import { getSettings } from '@/lib/settings';
 import { buildDailyPlan, type PlanRow } from '@/lib/plan';
@@ -15,6 +16,8 @@ interface Props {
   onSnooze: (id: string, until: string) => void;
   onDelete: (id: string) => void;
   onEdit: (task: Task) => void;
+  /** Replace a task's step checklist (one-tap toggles). */
+  onSetSteps: (id: string, steps: TaskStep[]) => void;
 }
 
 function greeting(now: Date): string {
@@ -47,11 +50,26 @@ function TaskRow({
   onSnooze,
   onDelete,
   onEdit,
+  onSetSteps,
 }: { row: PlanRow; now: Date } & Omit<Props, 'tasks'>) {
   const { task, carried, dueMs } = row;
   const done = task.status === 'done';
   const due = toDate(task.due_at);
   const snoozeBase = due && due.getTime() > now.getTime() ? due : now;
+
+  const [expanded, setExpanded] = useState(false);
+  const steps = task.steps;
+  const hasSteps = steps.length > 0;
+  const doneSteps = steps.filter((s) => s.done).length;
+
+  // Toggle one step's done flag and persist the whole array (one-tap; rollback
+  // is the feedback). Checking every step does NOT auto-complete the parent.
+  function toggleStep(id: string) {
+    onSetSteps(
+      task.id,
+      steps.map((s) => (s.id === id ? { ...s, done: !s.done } : s)),
+    );
+  }
 
   return (
     <div className="grid grid-cols-[44px_1fr] gap-2">
@@ -131,6 +149,53 @@ function TaskRow({
               </button>
             </div>
           </div>
+
+          {/* Steps progress — tapping the row expands an inline checklist. */}
+          {hasSteps && (
+            <div className="mt-2 pl-[30px]">
+              <button
+                onClick={() => setExpanded((v) => !v)}
+                aria-label={expanded ? 'Hide steps' : 'Show steps'}
+                aria-expanded={expanded}
+                className="flex w-full items-center gap-2 text-left"
+              >
+                <div className="h-1 flex-1 overflow-hidden rounded-full bg-rail">
+                  <div
+                    className="h-full rounded-full bg-[#42D392]"
+                    style={{ width: `${(doneSteps / steps.length) * 100}%` }}
+                  />
+                </div>
+                <span className="flex-shrink-0 text-[11px] text-ink-muted">
+                  {doneSteps}/{steps.length} steps
+                </span>
+              </button>
+
+              {expanded && (
+                <div className="mt-2 space-y-1.5">
+                  {steps.map((s) => (
+                    <div key={s.id} className="flex items-start gap-2">
+                      <button
+                        onClick={() => toggleStep(s.id)}
+                        aria-label={`Toggle step: ${s.title}`}
+                        className={`mt-[1px] flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors duration-[120ms] ${
+                          s.done ? 'border-accent-success bg-accent-success text-app' : 'border-ink-empty'
+                        }`}
+                      >
+                        {s.done && <IconCheck size={10} />}
+                      </button>
+                      <span
+                        className={`min-w-0 flex-1 break-words text-[12px] ${
+                          s.done ? 'text-ink-fainter line-through' : 'text-ink-secondary'
+                        }`}
+                      >
+                        {s.title}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

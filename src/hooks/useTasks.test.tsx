@@ -25,6 +25,7 @@ function task(id: string, over: Partial<Task> = {}): Task {
     source: 'voice',
     created_at: '2026-07-01T00:00:00Z',
     updated_at: '2026-07-01T00:00:00Z',
+    steps: [],
     completed_at: null,
     ...over,
   };

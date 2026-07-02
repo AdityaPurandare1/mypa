@@ -61,8 +61,14 @@ function installFetch(anthropic: () => Response) {
 Deno.test('parses a realistic Anthropic success response into tasks', async () => {
   const modelJson = JSON.stringify({
     tasks: [
-      { title: 'Send invoice', notes: null, due_at: '2026-07-02T09:00:00-07:00', priority: 2 },
-      { title: 'Client deck block', notes: '2 hrs', due_at: '2026-07-03T09:00:00-07:00', priority: 2 },
+      { title: 'Send invoice', notes: null, due_at: '2026-07-02T09:00:00-07:00', priority: 2, steps: [] },
+      {
+        title: 'Client deck block',
+        notes: '2 hrs',
+        due_at: '2026-07-03T09:00:00-07:00',
+        priority: 2,
+        steps: ['Draft outline', 'Add charts', 'Rehearse'],
+      },
     ],
   });
   const { captured, restore } = installFetch(
@@ -86,6 +92,9 @@ Deno.test('parses a realistic Anthropic success response into tasks', async () =
     assertEquals(out.tasks[0].title, 'Send invoice');
     assertEquals(out.tasks[1].title, 'Client deck block');
     assertEquals(out.tasks[1].notes, '2 hrs');
+    // Steps pass through the handler untouched.
+    assertEquals(out.tasks[0].steps, []);
+    assertEquals(out.tasks[1].steps, ['Draft outline', 'Add charts', 'Rehearse']);
 
     // Request-shape contract: text + now + timezone + MODEL_ID reach Anthropic.
     assertEquals(captured.body!.model, MODEL_ID);
@@ -93,6 +102,22 @@ Deno.test('parses a realistic Anthropic success response into tasks', async () =
     assertStringIncludes(String(captured.body!.system), tz);
     const messages = captured.body!.messages as Array<{ content: string }>;
     assertStringIncludes(messages[0].content, 'invoice');
+
+    // Schema contract: steps is a required property, declared as a string array
+    // with NO numeric constraints (structured outputs reject those).
+    const outputConfig = captured.body!.output_config as {
+      format: { schema: Record<string, unknown> };
+    };
+    const itemSchema = (
+      (outputConfig.format.schema.properties as Record<string, { items: Record<string, unknown> }>)
+        .tasks.items
+    ) as { required: string[]; properties: Record<string, Record<string, unknown>> };
+    assertEquals(itemSchema.required.includes('steps'), true);
+    const stepsSchema = itemSchema.properties.steps;
+    assertEquals(stepsSchema.type, 'array');
+    assertEquals((stepsSchema.items as { type: string }).type, 'string');
+    assertEquals('minItems' in stepsSchema, false);
+    assertEquals('maxItems' in stepsSchema, false);
   } finally {
     restore();
   }

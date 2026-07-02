@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { Task, TaskStatus } from '@/types';
+import type { Task, TaskStatus, TaskStep } from '@/types';
 import * as api from '@/lib/tasks';
 
 interface UseTasks {
@@ -13,8 +13,10 @@ interface UseTasks {
   remove: (id: string) => Promise<void>;
   edit: (
     id: string,
-    patch: Partial<Pick<Task, 'title' | 'notes' | 'due_at' | 'priority' | 'status'>>,
+    patch: Partial<Pick<Task, 'title' | 'notes' | 'due_at' | 'priority' | 'status' | 'steps'>>,
   ) => Promise<void>;
+  /** Replace a task's step checklist (one-tap toggles from the agenda). */
+  setSteps: (id: string, steps: TaskStep[]) => Promise<void>;
 }
 
 /**
@@ -138,7 +140,7 @@ export function useTasks(): UseTasks {
   );
 
   const edit = useCallback(
-    (id: string, patch: Partial<Pick<Task, 'title' | 'notes' | 'due_at' | 'priority' | 'status'>>) =>
+    (id: string, patch: Partial<Pick<Task, 'title' | 'notes' | 'due_at' | 'priority' | 'status' | 'steps'>>) =>
       mutate(
         (prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)),
         () => api.updateTask(id, patch),
@@ -146,5 +148,14 @@ export function useTasks(): UseTasks {
     [mutate],
   );
 
-  return { tasks, loading, error, refetch, complete, reopen, snooze, remove, edit };
+  const setSteps = useCallback(
+    (id: string, steps: TaskStep[]) =>
+      mutate(
+        (prev) => prev.map((t) => (t.id === id ? { ...t, steps } : t)),
+        () => api.updateTask(id, { steps }),
+      ),
+    [mutate],
+  );
+
+  return { tasks, loading, error, refetch, complete, reopen, snooze, remove, edit, setSteps };
 }

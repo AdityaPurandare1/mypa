@@ -16,6 +16,7 @@ function task(over: Partial<Task> = {}): Task {
     source: 'voice',
     created_at: '2026-07-01T00:00:00Z',
     updated_at: '2026-07-01T12:00:00Z',
+    steps: [],
     completed_at: null,
     ...over,
   };
@@ -114,6 +115,47 @@ describe('EditTaskSheet', () => {
     fireEvent.click(screen.getByLabelText('Close'));
     await waitFor(() => expect(onSave).toHaveBeenCalled());
     expect(onSave.mock.calls[0][0].notes).toBeNull();
+  });
+
+  it('adds a step via the input and saves it in the patch', async () => {
+    const { onSave } = setup();
+    fireEvent.change(screen.getByLabelText('Add a step'), { target: { value: '  Book venue ' } });
+    fireEvent.click(screen.getByLabelText('Add step'));
+    // Progress line appears once a step exists.
+    expect(screen.getByText('0/1')).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Close'));
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    const steps = onSave.mock.calls[0][0].steps as Array<{ title: string; done: boolean }>;
+    expect(steps).toHaveLength(1);
+    expect(steps[0].title).toBe('Book venue');
+    expect(steps[0].done).toBe(false);
+  });
+
+  it('toggles a step done and reflects it in the saved patch', async () => {
+    const { onSave } = setup({
+      steps: [{ id: 's1', title: 'First', done: false }],
+    });
+    expect(screen.getByText('0/1')).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Toggle step: First'));
+    expect(screen.getByText('1/1')).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Close'));
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    const steps = onSave.mock.calls[0][0].steps as Array<{ id: string; done: boolean }>;
+    expect(steps[0].done).toBe(true);
+  });
+
+  it('removes a step and saves the remaining list', async () => {
+    const { onSave } = setup({
+      steps: [
+        { id: 's1', title: 'Keep', done: false },
+        { id: 's2', title: 'Drop', done: false },
+      ],
+    });
+    fireEvent.click(screen.getByLabelText('Remove step: Drop'));
+    fireEvent.click(screen.getByLabelText('Close'));
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    const steps = onSave.mock.calls[0][0].steps as Array<{ title: string }>;
+    expect(steps.map((s) => s.title)).toEqual(['Keep']);
   });
 
   it('a done task offers undo: circle toggles reopen, footer saves + reopens', async () => {

@@ -4,7 +4,21 @@ import type { TaskDraft } from '@/types';
  *  the confirm sheet never dead-ends — the user always gets at least one row
  *  they can fill in by hand. */
 export function emptyDraft(): TaskDraft {
-  return { title: '', notes: null, due_at: null, priority: 3 };
+  return { title: '', notes: null, due_at: null, priority: 3, steps: [] };
+}
+
+/** Max steps we keep on a single draft. Guards against a runaway model list. */
+const MAX_STEPS = 12;
+
+/** Normalize a raw `steps` value into an array of trimmed, non-empty strings,
+ *  capped at MAX_STEPS. Non-arrays and non-string entries become []/dropped. */
+function coerceSteps(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((s): s is string => typeof s === 'string')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0)
+    .slice(0, MAX_STEPS);
 }
 
 function clampPriority(value: unknown): number {
@@ -38,6 +52,7 @@ function toDraft(raw: unknown): TaskDraft | null {
     notes: coerceString(r.notes),
     due_at: coerceDueAt(r.due_at),
     priority: clampPriority(r.priority),
+    steps: coerceSteps(r.steps),
   };
 }
 

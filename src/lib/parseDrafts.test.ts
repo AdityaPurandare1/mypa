@@ -69,6 +69,31 @@ describe('parseDrafts', () => {
     expect(out[0].title).toBe('kept');
   });
 
+  it('normalizes steps: trims strings and drops non-strings/empties', () => {
+    const out = parseDrafts({
+      tasks: [{ title: 'Compound', steps: ['  book venue ', '', 42, null, 'send invites'] }],
+    });
+    expect(out[0].steps).toEqual(['book venue', 'send invites']);
+  });
+
+  it('defaults missing steps to an empty array', () => {
+    const out = parseDrafts({ tasks: [{ title: 'No steps' }] });
+    expect(out[0].steps).toEqual([]);
+  });
+
+  it('coerces a non-array steps value to []', () => {
+    const out = parseDrafts({ tasks: [{ title: 'Bad steps', steps: 'not an array' }] });
+    expect(out[0].steps).toEqual([]);
+  });
+
+  it('caps steps at 12', () => {
+    const many = Array.from({ length: 20 }, (_, i) => `step ${i}`);
+    const out = parseDrafts({ tasks: [{ title: 'Many', steps: many }] });
+    expect(out[0].steps).toHaveLength(12);
+    expect(out[0].steps[0]).toBe('step 0');
+    expect(out[0].steps[11]).toBe('step 11');
+  });
+
   it('parses the two-task brain-dump shape into 2 drafts', () => {
     // "send invoice Thursday / block deck Friday"
     const out = parseDrafts({

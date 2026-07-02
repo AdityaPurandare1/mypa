@@ -23,7 +23,7 @@ const NEUTRAL_TABS: { id: Exclude<Tab, 'capture'>; label: string; Icon: typeof I
 export function Home() {
   const [tab, setTab] = useState<Tab>('today');
   const [editing, setEditing] = useState<Task | null>(null);
-  const { tasks, complete, reopen, snooze, remove, edit, refetch } = useTasks();
+  const { tasks, complete, reopen, snooze, remove, edit, setSteps, refetch } = useTasks();
 
   useDueReminders(tasks);
 
@@ -43,6 +43,10 @@ export function Home() {
     [snooze],
   );
   const quietRemove = useCallback((id: string) => void remove(id).catch(() => {}), [remove]);
+  const quietSetSteps = useCallback(
+    (id: string, steps: Parameters<typeof setSteps>[1]) => void setSteps(id, steps).catch(() => {}),
+    [setSteps],
+  );
 
   // Left/right groups flank the raised center Capture button.
   const left = NEUTRAL_TABS.slice(0, 2);
@@ -63,6 +67,7 @@ export function Home() {
             onSnooze={quietSnooze}
             onDelete={quietRemove}
             onEdit={setEditing}
+            onSetSteps={quietSetSteps}
           />
         )}
         {tab === 'calendar' && <Calendar tasks={tasks} />}

@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { format } from 'date-fns';
-import type { Task } from '@/types';
+import type { Task, TaskStep } from '@/types';
 import { splitIso, joinIso, toDate } from '@/lib/time';
 import { prioritySegmentActiveClass } from '@/lib/ui';
 import { IconBack, IconTrash, IconCheck, IconCalendar } from './icons';
 
 const PRIORITIES = [1, 2, 3, 4] as const;
 
-type Patch = Partial<Pick<Task, 'title' | 'notes' | 'due_at' | 'priority'>>;
+type Patch = Partial<Pick<Task, 'title' | 'notes' | 'due_at' | 'priority' | 'steps'>>;
 
 interface Props {
   task: Task;
@@ -40,9 +40,26 @@ export function EditTaskSheet({
   const [date, setDate] = useState(initial.date);
   const [time, setTime] = useState(initial.time);
   const [priority, setPriority] = useState(task.priority);
+  const [steps, setSteps] = useState<TaskStep[]>(task.steps);
+  const [newStep, setNewStep] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const titleRef = useRef<HTMLInputElement>(null);
+
+  const doneSteps = steps.filter((s) => s.done).length;
+
+  function addStep() {
+    const title = newStep.trim();
+    if (!title) return;
+    setSteps((prev) => [...prev, { id: crypto.randomUUID(), title, done: false }]);
+    setNewStep('');
+  }
+  function toggleStep(id: string) {
+    setSteps((prev) => prev.map((s) => (s.id === id ? { ...s, done: !s.done } : s)));
+  }
+  function removeStep(id: string) {
+    setSteps((prev) => prev.filter((s) => s.id !== id));
+  }
 
   // Escape closes the sheet; move focus to the title field on open.
   useEffect(() => {
@@ -61,6 +78,7 @@ export function EditTaskSheet({
       notes: notes.trim() || null,
       due_at: joinIso(date, time),
       priority,
+      steps,
     };
   }
 
@@ -163,6 +181,73 @@ export function EditTaskSheet({
             placeholder="Add notes…"
             className="mt-2 w-full resize-none rounded-[10px] border border-hairline bg-surface p-3 text-[14px] text-ink-secondary placeholder-ink-fainter outline-none"
           />
+        </div>
+
+        {/* Steps */}
+        <div className="mt-6">
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-medium uppercase tracking-[0.1em] text-ink-faint">Steps</span>
+            {steps.length > 0 && (
+              <span className="text-[11px] text-ink-fainter">
+                {doneSteps}/{steps.length}
+              </span>
+            )}
+          </div>
+
+          {steps.length > 0 && (
+            <div className="mt-2 space-y-1.5">
+              {steps.map((s) => (
+                <div key={s.id} className="flex items-start gap-2.5">
+                  <button
+                    onClick={() => toggleStep(s.id)}
+                    aria-label={`Toggle step: ${s.title}`}
+                    className={`mt-[1px] flex h-[18px] w-[18px] flex-shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors duration-[120ms] ${
+                      s.done ? 'border-accent-success bg-accent-success text-app' : 'border-ink-empty'
+                    }`}
+                  >
+                    {s.done && <IconCheck size={11} />}
+                  </button>
+                  <span
+                    className={`min-w-0 flex-1 break-words text-[13px] ${
+                      s.done ? 'text-ink-fainter line-through' : 'text-ink-secondary'
+                    }`}
+                  >
+                    {s.title}
+                  </span>
+                  <button
+                    onClick={() => removeStep(s.id)}
+                    aria-label={`Remove step: ${s.title}`}
+                    className="flex-shrink-0 text-[15px] text-ink-fainter transition-colors duration-[120ms] hover:text-accent-destructive"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="mt-2 flex items-center gap-2">
+            <input
+              aria-label="Add a step"
+              value={newStep}
+              onChange={(e) => setNewStep(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  addStep();
+                }
+              }}
+              placeholder="Add a step…"
+              className="min-w-0 flex-1 rounded-[10px] border border-hairline bg-surface px-3 py-2 text-[13px] text-ink-secondary placeholder-ink-fainter outline-none"
+            />
+            <button
+              onClick={addStep}
+              aria-label="Add step"
+              className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-hairline text-ink-secondary transition-colors duration-[120ms] hover:text-ink-primary"
+            >
+              +
+            </button>
+          </div>
         </div>
 
         {/* Due date + time */}

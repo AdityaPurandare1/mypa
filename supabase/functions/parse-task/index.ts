@@ -62,7 +62,7 @@ const TASKS_SCHEMA = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['title', 'notes', 'due_at', 'priority'],
+        required: ['title', 'notes', 'due_at', 'priority', 'steps'],
         properties: {
           title: { type: 'string', description: 'Short keyword title, at most 6 words.' },
           notes: { type: ['string', 'null'], description: 'Optional extra detail, or null.' },
@@ -76,6 +76,14 @@ const TASKS_SCHEMA = {
             type: 'integer',
             enum: [1, 2, 3, 4],
             description: '1 = highest urgency, 4 = lowest. Default 3.',
+          },
+          // NOTE: no minItems/maxItems — structured outputs reject numeric array
+          // constraints. The client caps/normalizes step counts instead.
+          steps: {
+            type: 'array',
+            items: { type: 'string' },
+            description:
+              'Ordered sub-steps if the task naturally breaks into multiple actions; empty array otherwise.',
           },
         },
       },
@@ -105,6 +113,7 @@ function systemPrompt(now: string, timezone: string): string {
     '- notes: any extra detail worth keeping, else null.',
     `- due_at: resolve relative dates ("tomorrow", "Thursday", "next week", "in 2 hours") against the current time ${now} in the IANA timezone ${timezone}, and return a full ISO 8601 timestamp. If a time of day is implied use it; if only a date is given, default to 09:00 local. If there is no due date, return null.`,
     '- priority: integer 1-4 where 1 is most urgent and 4 least; default to 3 when unclear.',
+    '- steps: if a task is compound (several distinct actions), include 2-6 short imperative steps; a simple single-action task gets an empty array.',
     'Return only the structured object. If the input has no tasks, return an empty tasks array.',
   ].join('\n');
 }

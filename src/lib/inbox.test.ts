@@ -16,7 +16,7 @@ function mockStorage() {
   } as Storage;
 }
 
-const draft = (title: string): TaskDraft => ({ title, notes: null, due_at: null, priority: 3 });
+const draft = (title: string): TaskDraft => ({ title, notes: null, due_at: null, priority: 3, steps: [] });
 
 beforeEach(() => {
   vi.stubGlobal('localStorage', mockStorage());

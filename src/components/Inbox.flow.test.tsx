@@ -14,7 +14,7 @@ import { Inbox } from './Inbox';
 import { setInbox, getInbox, clearInbox } from '@/lib/inbox';
 import type { TaskDraft } from '@/types';
 
-const draft = (title: string): TaskDraft => ({ title, notes: null, due_at: null, priority: 3 });
+const draft = (title: string): TaskDraft => ({ title, notes: null, due_at: null, priority: 3, steps: [] });
 
 function mockStorage(): Storage {
   const map = new Map<string, string>();

@@ -3,6 +3,14 @@
 
 export type TaskStatus = 'open' | 'done' | 'snoozed';
 
+/** A single sub-step in a task's checklist. Stored as an element of the
+ *  `steps` JSONB array on the tasks row. */
+export interface TaskStep {
+  id: string;
+  title: string;
+  done: boolean;
+}
+
 /** A persisted task row as returned by the tasks table. */
 export interface Task {
   id: string;
@@ -14,6 +22,7 @@ export interface Task {
   priority: number; // 1 (highest) .. 4 (lowest)
   status: TaskStatus;
   source: string | null;
+  steps: TaskStep[];
   created_at: string;
   updated_at: string;
   completed_at: string | null;
@@ -26,6 +35,7 @@ export interface TaskDraft {
   notes: string | null;
   due_at: string | null; // ISO timestamptz, or null for "no date"
   priority: number; // 1..4
+  steps: string[]; // plain step titles at draft stage; ids assigned on insert
 }
 
 /** Raw shape the parse-task edge function returns. */
