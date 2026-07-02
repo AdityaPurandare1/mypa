@@ -70,10 +70,11 @@ const TASKS_SCHEMA = {
             type: ['string', 'null'],
             description: 'ISO 8601 timestamp for the resolved due date/time, or null if none.',
           },
+          // NOTE: structured outputs reject numeric minimum/maximum constraints —
+          // an enum expresses the 1-4 range in a supported way.
           priority: {
             type: 'integer',
-            minimum: 1,
-            maximum: 4,
+            enum: [1, 2, 3, 4],
             description: '1 = highest urgency, 4 = lowest. Default 3.',
           },
         },
