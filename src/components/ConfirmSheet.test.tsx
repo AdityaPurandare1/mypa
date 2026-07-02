@@ -33,17 +33,49 @@ describe('ConfirmSheet', () => {
     expect(screen.queryByLabelText('Title 2')).not.toBeInTheDocument();
   });
 
-  it('saves all drafts in a single batch call and closes once', async () => {
+  it('saves all drafts in a single batch call and fires onSaved once', async () => {
     const onClose = vi.fn();
     const onSaved = vi.fn();
     render(<ConfirmSheet initial={[draft('A'), draft('B')]} rawInput="raw" onClose={onClose} onSaved={onSaved} />);
-    fireEvent.click(screen.getByRole('button', { name: /Save/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Save all/ }));
     await waitFor(() => expect(createTasksSpy).toHaveBeenCalledTimes(1));
     const rows = createTasksSpy.mock.calls[0][0] as Array<Record<string, unknown>>;
     expect(rows).toHaveLength(2);
     expect(rows[0].raw_input).toBe('raw');
     await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1));
+    // The Inbox host handles clearing + navigation on save; onClose is the
+    // separate Discard/back path and must NOT fire on a successful save.
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('Discard confirms before dropping drafts with content, then invokes onClose', () => {
+    const onClose = vi.fn();
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    render(<ConfirmSheet initial={[draft('A')]} rawInput="raw" onClose={onClose} onSaved={() => {}} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
+    expect(confirm).toHaveBeenCalledWith('Discard 1 parsed task?');
     expect(onClose).toHaveBeenCalledTimes(1);
+    confirm.mockRestore();
+  });
+
+  it('Discard cancels (does NOT close) when the user declines the confirm', () => {
+    const onClose = vi.fn();
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    render(<ConfirmSheet initial={[draft('A'), draft('B')]} rawInput="raw" onClose={onClose} onSaved={() => {}} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
+    expect(confirm).toHaveBeenCalledWith('Discard 2 parsed tasks?');
+    expect(onClose).not.toHaveBeenCalled();
+    confirm.mockRestore();
+  });
+
+  it('Discard skips the confirm when all drafts are blank', () => {
+    const onClose = vi.fn();
+    const confirm = vi.spyOn(window, 'confirm');
+    render(<ConfirmSheet initial={[draft('')]} rawInput="raw" onClose={onClose} onSaved={() => {}} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
+    expect(confirm).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalledTimes(1);
+    confirm.mockRestore();
   });
 
   it('blocks save when every title is empty', async () => {

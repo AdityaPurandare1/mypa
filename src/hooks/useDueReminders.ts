@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { Task } from '@/types';
+import { getSettings } from '@/lib/settings';
 
 const SCAN_MS = 60_000; // every ~60s
 const DUE_SOON_MS = 5 * 60_000; // fire within 5 minutes of due time
@@ -20,11 +21,15 @@ export function useDueReminders(tasks: Task[]): void {
 
   useEffect(() => {
     if (typeof Notification === 'undefined') return;
-    if (Notification.permission === 'default') {
-      void Notification.requestPermission();
-    }
 
     function scan() {
+      // Re-read the setting each tick so toggling takes effect without reload.
+      // When reminders are off we neither scan nor request permission.
+      if (!getSettings().dueSoonReminders) return;
+      if (Notification.permission === 'default') {
+        void Notification.requestPermission();
+        return; // permission not yet resolved this tick — next scan will fire.
+      }
       if (Notification.permission !== 'granted') return;
       const now = Date.now();
       for (const t of tasksRef.current) {

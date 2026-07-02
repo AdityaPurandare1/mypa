@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { format } from 'date-fns';
+import { addMonths, format, subMonths } from 'date-fns';
 import { Calendar } from './Calendar';
 import type { Task } from '@/types';
 
@@ -30,7 +30,7 @@ describe('Calendar', () => {
     const key = format(today, 'yyyy-MM-dd');
     const t = task({ id: 'c1', title: 'Dated task', due_at: today.toISOString() });
 
-    render(<Calendar tasks={[t]} onComplete={() => {}} />);
+    render(<Calendar tasks={[t]} />);
 
     expect(screen.getByTestId(`dot-${key}`)).toBeInTheDocument();
 
@@ -43,7 +43,27 @@ describe('Calendar', () => {
   });
 
   it('shows "Nothing scheduled" on an empty day', () => {
-    render(<Calendar tasks={[]} onComplete={() => {}} />);
+    render(<Calendar tasks={[]} />);
     expect(screen.getByText('Nothing scheduled.')).toBeInTheDocument();
+  });
+
+  it('next/prev month chevrons move the cursor and update the grid', () => {
+    const now = new Date();
+    render(<Calendar tasks={[]} />);
+    expect(screen.getByRole('heading', { name: format(now, 'MMMM yyyy') })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('Next month'));
+    const next = addMonths(now, 1);
+    expect(screen.getByRole('heading', { name: format(next, 'MMMM yyyy') })).toBeInTheDocument();
+    // The grid follows the cursor: the 15th of next month is a rendered cell
+    // (mid-month days never appear as adjacent-month padding).
+    const midNext = new Date(next.getFullYear(), next.getMonth(), 15);
+    expect(screen.getByLabelText(format(midNext, 'EEEE, MMMM d'))).toBeInTheDocument();
+
+    // Back twice lands on the previous month.
+    fireEvent.click(screen.getByLabelText('Previous month'));
+    fireEvent.click(screen.getByLabelText('Previous month'));
+    const prev = subMonths(now, 1);
+    expect(screen.getByRole('heading', { name: format(prev, 'MMMM yyyy') })).toBeInTheDocument();
   });
 });

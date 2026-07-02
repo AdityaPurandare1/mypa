@@ -50,7 +50,8 @@ describe('useTasks', () => {
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     await act(async () => {
-      await result.current.complete('1');
+      // mutate now rethrows after rollback so callers can react; swallow here.
+      await expect(result.current.complete('1')).rejects.toThrow('server said no');
     });
 
     // Optimistic flip to 'done' must have been rolled back to 'open'.

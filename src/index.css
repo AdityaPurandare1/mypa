@@ -14,13 +14,14 @@ body,
 
 body {
   margin: 0;
-  background: #0f172a;
-  color: #e2e8f0;
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  background: #191612;
+  color: #f3ede5;
+  font-family: 'Roboto', Arial, Helvetica, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
-  /* Respect iOS safe areas when installed to home screen. */
-  padding: env(safe-area-inset-top) env(safe-area-inset-right)
-    env(safe-area-inset-bottom) env(safe-area-inset-left);
+  /* Respect iOS safe areas when installed to home screen. The bottom inset is
+     handled inside the tab bar itself, so it isn't padded away here. */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) 0
+    env(safe-area-inset-left);
 }
 
 /* Hide scrollbars on the month grid without losing scroll. */

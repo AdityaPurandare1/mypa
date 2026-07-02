@@ -1,7 +1,22 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { useDueReminders } from './useDueReminders';
+import { setSettings } from '@/lib/settings';
 import type { Task } from '@/types';
+
+function mockStorage(): Storage {
+  const map = new Map<string, string>();
+  return {
+    getItem: (k: string) => (map.has(k) ? (map.get(k) as string) : null),
+    setItem: (k: string, v: string) => void map.set(k, v),
+    removeItem: (k: string) => void map.delete(k),
+    clear: () => map.clear(),
+    key: (i: number) => Array.from(map.keys())[i] ?? null,
+    get length() {
+      return map.size;
+    },
+  } as Storage;
+}
 
 function task(over: Partial<Task>): Task {
   return {
@@ -25,6 +40,7 @@ let notifCtor: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   vi.useFakeTimers();
+  vi.stubGlobal('localStorage', mockStorage());
   notifCtor = vi.fn();
   // Mock the Notification global with granted permission.
   const N = notifCtor as unknown as typeof Notification & { permission: string; requestPermission: () => Promise<string> };
@@ -60,5 +76,31 @@ describe('useDueReminders', () => {
     ];
     renderHook(() => useDueReminders(tasks));
     expect(notifCtor).not.toHaveBeenCalled();
+  });
+
+  it('does not fire (or request permission) when due-soon reminders are off', () => {
+    setSettings({ dueSoonReminders: false });
+    const perm = (Notification as unknown as { requestPermission: ReturnType<typeof vi.fn> }).requestPermission;
+    const due = new Date(Date.now() + 60_000).toISOString(); // within window
+    const tasks = [task({ id: 'a', due_at: due, status: 'open' })];
+    renderHook(() => useDueReminders(tasks));
+
+    expect(notifCtor).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(60_000 * 3);
+    expect(notifCtor).not.toHaveBeenCalled();
+    expect(perm).not.toHaveBeenCalled();
+  });
+
+  it('resumes firing after the setting is toggled back on (re-read per scan)', () => {
+    setSettings({ dueSoonReminders: false });
+    const due = new Date(Date.now() + 60_000).toISOString();
+    const tasks = [task({ id: 'a', due_at: due, status: 'open' })];
+    renderHook(() => useDueReminders(tasks));
+    expect(notifCtor).not.toHaveBeenCalled();
+
+    // Toggle on — the next scan tick must pick it up without a remount.
+    setSettings({ dueSoonReminders: true });
+    vi.advanceTimersByTime(60_000);
+    expect(notifCtor).toHaveBeenCalledTimes(1);
   });
 });

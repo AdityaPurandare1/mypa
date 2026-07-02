@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { TaskDraft } from '@/types';
 import { parseTask } from '@/lib/parseTask';
-import { ConfirmSheet } from './ConfirmSheet';
+import { IconMic, IconArrowRight } from './icons';
 
 // Minimal typing for the (still non-standard) Web Speech API. Feature-detected
 // below; on iOS Safari it's absent and we fall back to keyboard dictation into
@@ -26,15 +26,17 @@ function getRecognitionCtor(): (new () => SpeechRecognitionLike) | null {
 }
 
 interface Props {
-  onSaved: () => void;
+  /** Hands parsed drafts + the original text to the shell, which stashes them
+   *  in the Inbox and routes to the review screen. */
+  onParsed: (drafts: TaskDraft[], rawInput: string) => void;
 }
 
-export function Capture({ onSaved }: Props) {
+const EXAMPLES = ['Try: "pay rent on the 1st"', '"gym 3x this week"'];
+
+export function Capture({ onParsed }: Props) {
   const [text, setText] = useState('');
   const [parsing, setParsing] = useState(false);
   const [listening, setListening] = useState(false);
-  const [drafts, setDrafts] = useState<TaskDraft[] | null>(null);
-  const [submitted, setSubmitted] = useState('');
 
   const recRef = useRef<SpeechRecognitionLike | null>(null);
   const speechSupported = getRecognitionCtor() !== null;
@@ -75,16 +77,15 @@ export function Capture({ onSaved }: Props) {
     setParsing(true);
     const result = await parseTask(t);
     setParsing(false);
-    setSubmitted(t);
-    setDrafts(result);
+    onParsed(result, t);
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 px-4 py-6">
+    <div className="flex flex-1 flex-col gap-4 px-[22px] pb-6 pt-8">
       <div>
-        <h1 className="text-2xl font-bold text-white">What's on your mind?</h1>
-        <p className="mt-1 text-sm text-slate-400">
-          Brain-dump everything. myPA splits it into tasks you can review before saving.
+        <h1 className="text-[26px] font-bold tracking-[-0.01em] text-ink-primary">Capture</h1>
+        <p className="mt-1 text-[13px] text-ink-muted">
+          Dump everything on your mind. myPA turns it into dated, prioritized tasks.
         </p>
       </div>
 
@@ -93,9 +94,21 @@ export function Capture({ onSaved }: Props) {
         placeholder="e.g. Send the invoice Thursday, block the deck for Friday, call the vendor about the leak…"
         value={text}
         onChange={(e) => setText(e.target.value)}
-        rows={6}
-        className="w-full resize-none rounded-2xl border border-slate-700 bg-slate-900 px-4 py-3 text-white placeholder-slate-500 outline-none focus:border-brand"
+        rows={7}
+        className="w-full flex-1 resize-none rounded-[14px] border border-hairline-09 bg-surface p-[15px] text-[15px] leading-[1.6] text-ink-card placeholder-ink-fainter caret-accent-priority outline-none transition-colors duration-[120ms] focus:border-hairline-09"
       />
+
+      <div className="flex flex-wrap gap-2">
+        {EXAMPLES.map((ex) => (
+          <button
+            key={ex}
+            onClick={() => setText((t) => (t ? t : ex.replace(/^Try: |"/g, '').replace(/"$/, '')))}
+            className="rounded-full border border-hairline-08 bg-surface px-3 py-1.5 text-[12px] text-ink-muted transition-colors duration-[120ms] hover:text-ink-secondary"
+          >
+            {ex}
+          </button>
+        ))}
+      </div>
 
       <div className="flex items-center gap-3">
         {speechSupported && (
@@ -103,39 +116,30 @@ export function Capture({ onSaved }: Props) {
             onClick={toggleListen}
             aria-label={listening ? 'Stop listening' : 'Start voice input'}
             aria-pressed={listening}
-            className={`flex h-12 w-12 items-center justify-center rounded-full text-xl transition ${
-              listening ? 'animate-pulse bg-red-500 text-white' : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
+            className={`flex h-[54px] w-[54px] flex-shrink-0 items-center justify-center rounded-full border transition-colors duration-[120ms] ${
+              listening
+                ? 'border-accent-destructive bg-surface text-accent-destructive'
+                : 'border-hairline bg-surface text-ink-secondary'
             }`}
           >
-            🎙
+            <IconMic size={22} />
           </button>
         )}
         <button
           onClick={() => void onParse()}
           disabled={parsing || !text.trim()}
-          className="flex-1 rounded-2xl bg-brand py-3 font-medium text-white transition hover:bg-brand-soft disabled:opacity-50"
+          className="flex flex-1 items-center justify-center gap-2 rounded-full bg-btn-primary py-[15px] text-[16px] font-bold text-btn-primary-ink transition disabled:opacity-50"
         >
           {parsing ? 'Thinking…' : 'Parse into tasks'}
+          {!parsing && <IconArrowRight size={18} />}
         </button>
       </div>
 
       {!speechSupported && (
-        <p className="text-xs text-slate-500">
+        <p className="text-[12px] text-ink-fainter">
           Voice input isn't available in this browser. On iPhone, tap the mic on your keyboard to
           dictate into the box above.
         </p>
-      )}
-
-      {drafts && (
-        <ConfirmSheet
-          initial={drafts}
-          rawInput={submitted}
-          onClose={() => setDrafts(null)}
-          onSaved={() => {
-            setText('');
-            onSaved();
-          }}
-        />
       )}
     </div>
   );

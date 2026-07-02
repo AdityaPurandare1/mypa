@@ -1,6 +1,11 @@
-import { addDays, addWeeks } from 'date-fns';
+import { addDays, addWeeks, format } from 'date-fns';
+import { useAuth } from '@/lib/auth';
 import type { Task } from '@/types';
-import { formatDue, isOverdue, isDueToday, toDate } from '@/lib/time';
+import { toDate } from '@/lib/time';
+import { getSettings } from '@/lib/settings';
+import { buildDailyPlan, type PlanRow } from '@/lib/plan';
+import { displayName, monogram } from '@/lib/user';
+import { IconCheck } from './icons';
 
 interface Props {
   tasks: Task[];
@@ -10,110 +15,182 @@ interface Props {
   onEdit: (task: Task) => void;
 }
 
-type Bucket = 'Overdue' | 'Today' | 'Upcoming' | 'No date';
-
-function bucketOf(t: Task): Bucket {
-  if (!t.due_at) return 'No date';
-  if (isOverdue(t.due_at) && t.status === 'open') return 'Overdue';
-  if (isDueToday(t.due_at)) return 'Today';
-  return 'Upcoming';
+function greeting(now: Date): string {
+  const h = now.getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 18) return 'Good afternoon';
+  return 'Good evening';
 }
 
-const ORDER: Bucket[] = ['Overdue', 'Today', 'Upcoming', 'No date'];
+/** Sub-line for a timed task. Tasks only carry a due time (no duration), so we
+ *  show just that time with an unambiguous meridian — no invented end. */
+function timeSubline(dueMs: number | null): string {
+  if (dueMs === null) return 'No time · Anytime';
+  return `${format(new Date(dueMs), 'h:mm a')} · Focus block`;
+}
 
-const PRIORITY_DOT: Record<number, string> = {
-  1: 'bg-red-500',
-  2: 'bg-orange-400',
-  3: 'bg-slate-500',
-  4: 'bg-slate-700',
-};
+function TimeLabel({ dueMs }: { dueMs: number | null }) {
+  return (
+    <div className="pt-[9px] text-[11px] text-ink-fainter">
+      {dueMs === null ? '' : format(new Date(dueMs), 'h:mm')}
+    </div>
+  );
+}
 
-function TaskRow({ task, onComplete, onSnooze, onDelete, onEdit }: { task: Task } & Omit<Props, 'tasks'>) {
-  const overdue = isOverdue(task.due_at) && task.status === 'open';
+function TaskRow({
+  row,
+  now,
+  onComplete,
+  onSnooze,
+  onDelete,
+  onEdit,
+}: { row: PlanRow; now: Date } & Omit<Props, 'tasks'>) {
+  const { task, carried, dueMs } = row;
   const done = task.status === 'done';
-  // Snooze anchors on the later of now / the current due date, so snoozing an
-  // already-overdue task never lands it further in the past.
-  const now = new Date();
   const due = toDate(task.due_at);
   const snoozeBase = due && due.getTime() > now.getTime() ? due : now;
+
   return (
-    <div className="flex items-start gap-3 rounded-xl border border-slate-800 bg-slate-950 p-3">
-      <button
-        onClick={() => onComplete(task.id)}
-        aria-label={done ? 'Completed' : 'Complete task'}
-        className={`mt-0.5 h-5 w-5 flex-shrink-0 rounded-full border-2 ${
-          done ? 'border-brand bg-brand' : 'border-slate-600 hover:border-brand'
-        }`}
-      />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className={`h-2 w-2 flex-shrink-0 rounded-full ${PRIORITY_DOT[task.priority]}`} />
-          <span className={`truncate font-medium ${done ? 'text-slate-500 line-through' : 'text-white'}`}>
-            {task.title}
-          </span>
-        </div>
-        <div className="mt-0.5 flex items-center gap-2 text-xs">
-          {overdue ? (
-            <span
-              data-testid={`overdue-${task.id}`}
-              className="rounded bg-red-500/20 px-1.5 py-0.5 font-medium text-red-400"
+    <div className="grid grid-cols-[44px_1fr] gap-2">
+      <TimeLabel dueMs={dueMs} />
+      <div className="flex gap-2">
+        {/* left rail */}
+        <div className="w-[2px] flex-shrink-0 rounded-full bg-rail" />
+        <div
+          className={`flex-1 rounded-[9px] border bg-surface p-3 transition-colors duration-[120ms] ${
+            carried ? 'border-[rgba(210,164,110,0.3)]' : 'border-hairline'
+          }`}
+        >
+          <div className="flex items-start gap-2.5">
+            <button
+              onClick={() => onComplete(task.id)}
+              aria-label={done ? 'Completed' : 'Complete task'}
+              className={`mt-[1px] flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors duration-[120ms] ${
+                done ? 'border-accent-success bg-accent-success text-app' : 'border-ink-empty'
+              }`}
             >
-              Overdue · {formatDue(task.due_at)}
-            </span>
-          ) : (
-            <span className="text-slate-400">{formatDue(task.due_at)}</span>
-          )}
+              {done && <IconCheck size={12} />}
+            </button>
+
+            <button onClick={() => onEdit(task)} className="min-w-0 flex-1 text-left">
+              <div className="flex items-center gap-2">
+                <span
+                  className={`truncate text-[13px] font-medium ${
+                    done ? 'text-ink-fainter line-through' : 'text-ink-primary'
+                  }`}
+                >
+                  {task.title}
+                </span>
+                {!done && task.priority === 1 && (
+                  <span className="h-[7px] w-[7px] flex-shrink-0 rounded-full bg-accent-priority" />
+                )}
+              </div>
+              <div className="mt-0.5 text-[11px]">
+                {carried ? (
+                  <span data-testid={`carried-${task.id}`} className="text-accent-priority">
+                    Carried from yesterday · P{task.priority}
+                  </span>
+                ) : (
+                  <span className="text-ink-fainter">{timeSubline(dueMs)}</span>
+                )}
+              </div>
+            </button>
+
+            {/* keep existing snooze/delete affordances */}
+            <div className="flex flex-shrink-0 items-center gap-1 text-ink-empty">
+              <button
+                onClick={() => onSnooze(task.id, addDays(snoozeBase, 1).toISOString())}
+                aria-label="Snooze one day"
+                className="px-1 text-[11px] transition-colors duration-[120ms] hover:text-ink-secondary"
+              >
+                +1d
+              </button>
+              <button
+                onClick={() => onSnooze(task.id, addWeeks(snoozeBase, 1).toISOString())}
+                aria-label="Snooze one week"
+                className="px-1 text-[11px] transition-colors duration-[120ms] hover:text-ink-secondary"
+              >
+                +1w
+              </button>
+              <button
+                onClick={() => onDelete(task.id)}
+                aria-label="Delete"
+                className="px-1 text-[13px] transition-colors duration-[120ms] hover:text-accent-destructive"
+              >
+                ×
+              </button>
+            </div>
+          </div>
         </div>
-        {task.notes && <p className="mt-1 truncate text-xs text-slate-500">{task.notes}</p>}
-      </div>
-      <div className="flex flex-shrink-0 gap-1 text-slate-500">
-        <button onClick={() => onEdit(task)} aria-label="Edit" className="px-1.5 hover:text-white">
-          ✎
-        </button>
-        <button
-          onClick={() => onSnooze(task.id, addDays(snoozeBase, 1).toISOString())}
-          aria-label="Snooze one day"
-          className="px-1.5 hover:text-white"
-        >
-          +1d
-        </button>
-        <button
-          onClick={() => onSnooze(task.id, addWeeks(snoozeBase, 1).toISOString())}
-          aria-label="Snooze one week"
-          className="px-1.5 hover:text-white"
-        >
-          +1w
-        </button>
-        <button onClick={() => onDelete(task.id)} aria-label="Delete" className="px-1.5 hover:text-red-400">
-          🗑
-        </button>
       </div>
     </div>
   );
 }
 
 export function Agenda({ tasks, ...actions }: Props) {
-  const buckets: Record<Bucket, Task[]> = { Overdue: [], Today: [], Upcoming: [], 'No date': [] };
-  for (const t of tasks) buckets[bucketOf(t)].push(t);
+  const { session } = useAuth();
+  const now = new Date();
+  const settings = getSettings();
+  const plan = buildDailyPlan(tasks, now, settings);
+  const { rows, capacity } = plan;
 
-  const hasAny = tasks.length > 0;
+  const name = displayName(session?.user);
+  const initial = monogram(session?.user);
+
+  // Progress segments: done + planned within the target.
+  const total = Math.max(capacity.target, capacity.done + capacity.planned, 1);
+  const donePct = (capacity.done / total) * 100;
+  const plannedPct = (Math.min(capacity.planned, capacity.target) / total) * 100;
 
   return (
-    <div className="mx-auto w-full max-w-lg flex-1 space-y-6 px-4 py-6">
-      {!hasAny && <p className="pt-12 text-center text-slate-500">No tasks yet. Capture a brain-dump to start.</p>}
-      {ORDER.map((b) =>
-        buckets[b].length ? (
-          <section key={b} className="space-y-2">
-            <h2 className={`text-sm font-semibold ${b === 'Overdue' ? 'text-red-400' : 'text-slate-400'}`}>
-              {b} <span className="text-slate-600">({buckets[b].length})</span>
-            </h2>
-            <div className="space-y-2">
-              {buckets[b].map((t) => (
-                <TaskRow key={t.id} task={t} {...actions} />
-              ))}
-            </div>
-          </section>
-        ) : null,
+    <div className="flex-1 px-[22px] pb-6 pt-8">
+      {/* Header */}
+      <div className="flex items-start justify-between">
+        <div>
+          <div className="text-[12px] font-medium uppercase tracking-[0.14em] text-ink-faint">
+            {format(now, 'EEE')} · {format(now, 'MMM d').toUpperCase()}
+          </div>
+          <h1 className="mt-1 text-[26px] font-bold tracking-[-0.01em] text-ink-primary">
+            {greeting(now)}, {name}
+          </h1>
+        </div>
+        <div className="flex h-[38px] w-[38px] flex-shrink-0 items-center justify-center rounded-full border border-hairline bg-chip-alt text-[15px] font-medium text-ink-card">
+          {initial}
+        </div>
+      </div>
+
+      {/* Capacity card */}
+      <div className="mt-5 rounded-[12px] border border-hairline bg-surface px-[14px] py-[13px]">
+        <div className="flex items-center justify-between">
+          <span className="text-[13px] font-medium text-ink-secondary">
+            {capacity.fit} {capacity.fit === 1 ? 'task fits' : 'tasks fit'} your day
+          </span>
+          {capacity.carried > 0 && (
+            <span className="text-[12px] text-accent-priority">{capacity.carried} carried over</span>
+          )}
+        </div>
+        <div className="mt-2.5 flex h-1.5 gap-1 overflow-hidden rounded-full bg-rail">
+          {donePct > 0 && <div className="h-full rounded-full bg-accent-success" style={{ width: `${donePct}%` }} />}
+          {plannedPct > 0 && (
+            <div className="h-full rounded-full bg-accent-event" style={{ width: `${plannedPct}%` }} />
+          )}
+        </div>
+        <div className="mt-2 text-[11px] text-ink-fainter">
+          ~{capacity.focusFreeHours}h focus free · {capacity.done} done
+        </div>
+      </div>
+
+      {/* Timeline */}
+      {rows.length === 0 ? (
+        <p className="pt-12 text-center text-[13px] text-ink-muted">
+          Nothing planned yet. Tap ＋ to capture your day.
+        </p>
+      ) : (
+        <div className="mt-5 space-y-2.5">
+          {rows.map((row) => (
+            <TaskRow key={row.task.id} row={row} now={now} {...actions} />
+          ))}
+        </div>
       )}
     </div>
   );

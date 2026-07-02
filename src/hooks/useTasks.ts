@@ -68,7 +68,11 @@ export function useTasks(): UseTasks {
     };
   }, [refetch]);
 
-  /** Apply an optimistic map, run the mutation, roll back + refetch on failure. */
+  /**
+   * Apply an optimistic map, run the mutation, roll back + refetch on failure.
+   * Rethrows after rollback so callers can keep UI (e.g. the edit sheet) open
+   * and surface the failure; `error` is also set for passive consumers.
+   */
   const mutate = useCallback(
     async (optimistic: (prev: Task[]) => Task[], run: () => Promise<unknown>) => {
       const snapshot = tasksRef.current;
@@ -82,6 +86,7 @@ export function useTasks(): UseTasks {
         mutationsInFlight.current -= 1;
         setTasks(snapshot); // rollback
         setError(e instanceof Error ? e.message : String(e));
+        throw e;
       }
     },
     [refetch],
