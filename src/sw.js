@@ -6,6 +6,13 @@
 // them up in P1 (reminders are in-app, Notification API while the tab is open).
 
 import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching';
+import { clientsClaim } from 'workbox-core';
+
+// Take over immediately on install — without this a new deploy sits "waiting"
+// until the PWA is fully closed on every device (on iOS, effectively forever),
+// so users keep seeing the previous version.
+self.skipWaiting();
+clientsClaim();
 
 cleanupOutdatedCaches();
 precacheAndRoute(self.__WB_MANIFEST);
