@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>myPA</title>
+    <script>
+      // GitHub Pages SPA fallback. Pages serves 404.html for any unknown path.
+      // The app has no router (it renders by auth state), so we simply send the
+      // browser back to the app base, PRESERVING the query string and hash.
+      // Keeping ?code=… in the query is essential — the OAuth callback in
+      // auth.tsx reads url.searchParams, so it must not be pushed behind a #.
+      (function () {
+        var base = '/mypa/';
+        var l = window.location;
+        l.replace(l.origin + base + l.search + l.hash);
+      })();
+    </script>
+  </head>
+  <body></body>
+</html>
