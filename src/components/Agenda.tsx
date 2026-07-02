@@ -5,6 +5,7 @@ import { toDate } from '@/lib/time';
 import { getSettings } from '@/lib/settings';
 import { buildDailyPlan, type PlanRow } from '@/lib/plan';
 import { displayName, monogram } from '@/lib/user';
+import { priorityBorderClass } from '@/lib/ui';
 import { IconCheck } from './icons';
 
 interface Props {
@@ -57,11 +58,12 @@ function TaskRow({
         {/* left rail */}
         <div className="w-[2px] flex-shrink-0 rounded-full bg-rail" />
         <div
-          className={`flex-1 rounded-[9px] border bg-surface p-3 transition-colors duration-[120ms] ${
-            carried ? 'border-[rgba(210,164,110,0.3)]' : 'border-hairline'
-          }`}
+          className={`min-w-0 flex-1 rounded-[9px] border bg-surface p-3 transition-colors duration-[120ms] ${priorityBorderClass(
+            task.priority,
+            carried,
+          )}`}
         >
-          <div className="flex items-start gap-2.5">
+          <div className="flex min-w-0 items-start gap-2.5">
             <button
               onClick={() => onComplete(task.id)}
               aria-label={done ? 'Completed' : 'Complete task'}
@@ -73,16 +75,16 @@ function TaskRow({
             </button>
 
             <button onClick={() => onEdit(task)} className="min-w-0 flex-1 text-left">
-              <div className="flex items-center gap-2">
+              <div className="flex items-start gap-2">
                 <span
-                  className={`truncate text-[13px] font-medium ${
+                  className={`min-w-0 break-words text-[13px] font-medium ${
                     done ? 'text-ink-fainter line-through' : 'text-ink-primary'
                   }`}
                 >
                   {task.title}
                 </span>
                 {!done && task.priority === 1 && (
-                  <span className="h-[7px] w-[7px] flex-shrink-0 rounded-full bg-accent-priority" />
+                  <span className="mt-[5px] h-[7px] w-[7px] flex-shrink-0 rounded-full bg-accent-priority" />
                 )}
               </div>
               <div className="mt-0.5 text-[11px]">

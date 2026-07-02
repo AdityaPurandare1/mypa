@@ -16,6 +16,9 @@ body {
   margin: 0;
   background: #191612;
   color: #f3ede5;
+  /* The page must never scroll horizontally — long content wraps instead. */
+  overflow-x: hidden;
+  overflow-wrap: break-word;
   font-family: 'Roboto', Arial, Helvetica, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   /* Respect iOS safe areas when installed to home screen. The bottom inset is

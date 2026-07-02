@@ -3,6 +3,7 @@ import type { TaskDraft } from '@/types';
 import { emptyDraft } from '@/lib/parseDrafts';
 import { splitIso, joinIso, formatDue, formatTime } from '@/lib/time';
 import * as api from '@/lib/tasks';
+import { priorityBorderClass } from '@/lib/ui';
 import { IconBack } from './icons';
 
 const PRIORITIES = [1, 2, 3, 4] as const;
@@ -114,7 +115,10 @@ export function ConfirmSheet({ initial, rawInput, onClose, onSaved }: Props) {
         {drafts.map((d, i) => {
           const { date, time } = splitIso(d.due_at);
           return (
-            <div key={i} className="rounded-[12px] border border-hairline bg-surface p-[14px]">
+            <div
+              key={i}
+              className={`rounded-[12px] border bg-surface p-[14px] ${priorityBorderClass(d.priority)}`}
+            >
               <div className="flex items-start gap-2">
                 <input
                   ref={i === 0 ? firstFieldRef : undefined}

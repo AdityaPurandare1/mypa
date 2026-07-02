@@ -156,7 +156,7 @@ export function Calendar({ tasks }: Props) {
               <div className="h-9 w-1 flex-shrink-0 rounded-full bg-accent-priority" />
               <div className="min-w-0 flex-1">
                 <p
-                  className={`truncate text-[13px] font-medium ${
+                  className={`break-words text-[13px] font-medium ${
                     t.status === 'done' ? 'text-ink-fainter line-through' : 'text-ink-card'
                   }`}
                 >
