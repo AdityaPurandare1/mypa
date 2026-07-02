@@ -49,8 +49,12 @@ export function Home() {
   const right = NEUTRAL_TABS.slice(2);
 
   return (
-    <div className="flex min-h-screen flex-col bg-app text-ink-primary">
-      <main className="mx-auto flex w-full max-w-lg flex-1 flex-col overflow-y-auto pb-32">
+    // h-dvh + overflow-hidden pin the shell to the viewport so the BODY never
+    // scrolls — <main> is the only scroller. This is what keeps the tab bar
+    // truly immobile on iOS (a scrolling body drags fixed elements along with
+    // the rubber-band bounce and the collapsing URL bar).
+    <div className="flex h-dvh flex-col overflow-hidden bg-app text-ink-primary">
+      <main className="no-scrollbar mx-auto flex w-full max-w-lg flex-1 flex-col overflow-y-auto overscroll-contain pb-32">
         {tab === 'today' && (
           <Agenda
             tasks={tasks}
